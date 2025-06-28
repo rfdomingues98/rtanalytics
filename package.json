@@ -1,0 +1,28 @@
+{
+  "name": "real-time-analytics",
+  "version": "1.0.0",
+  "description": "Microservices architecture for real-time analytics",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter event-generator dev\" \"pnpm --filter dashboard dev\"",
+    "build": "pnpm --filter event-generator build && pnpm --filter dashboard build",
+    "start:event-generator": "pnpm --filter event-generator start",
+    "start:dashboard": "pnpm --filter dashboard dev",
+    "start:event-processor": "cd services/event-processor && dotnet run",
+    "install:all": "pnpm install && cd services/event-processor && dotnet restore"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "@algolia/client-search"
+      ]
+    }
+  },
+  "workspaces": [
+    "services/event-generator",
+    "services/dashboard"
+  ]
+}

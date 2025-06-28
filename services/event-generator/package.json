@@ -1,0 +1,26 @@
+{
+  "name": "event-generator",
+  "version": "1.0.0",
+  "description": "Event generator service for real-time analytics",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "event-generator",
+    "real-time",
+    "analytics",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT"
+}
