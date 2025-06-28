@@ -1,24 +1,23 @@
-class EventGenerator {
-  constructor() {}
+#!/usr/bin/env node
 
-  public startGenerating() {}
+import {setupCommands} from './cli/commands.js'
 
-  public stopGenerating() {}
+// Parse CLI arguments
+const program = setupCommands()
 
-  private generateRandomEvent() {}
-
-  private generateEventData() {}
-
-  private broadcastEvent() {}
+if (process.argv.length <= 2) {
+  // No arguments provided, start interactive mode
+  program.parse(['node', 'event-generator', 'interactive'])
+} else {
+  program.parse()
 }
 
-// Start the event generator
-const generator = new EventGenerator()
-generator.startGenerating()
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nShutting down event generator...')
-  generator.stopGenerating()
-  process.exit(0)
-})
+// Export for potential external use
+export {EventGenerator} from './event-generator.js'
+export type {
+  EventData,
+  EventType,
+  GeneratorConfig,
+  GeneratorStats,
+  User,
+} from './types.js'
