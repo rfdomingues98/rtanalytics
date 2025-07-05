@@ -35,6 +35,12 @@ export type GeneratorConfig = {
   baseEventInterval: number
   maxEventInterval: number
   logFile: string
+  kafka: {
+    enabled: boolean
+    brokers: string[]
+    topic: string
+    clientId: string
+  }
 }
 
 export interface InteractiveOptions {

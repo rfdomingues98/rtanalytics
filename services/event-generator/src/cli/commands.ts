@@ -73,15 +73,27 @@ export function setupCommands(): Command {
 
       const generator = new EventGenerator(parseInt(options.users))
 
+      // Graceful shutdown handler
+      const cleanup = async () => {
+        console.log('\n🛑 Shutting down...')
+        await generator.cleanup()
+        process.exit(0)
+      }
+
+      process.on('SIGINT', cleanup)
+      process.on('SIGTERM', cleanup)
+
       const started = await generator.startGenerating()
       if (started) {
         console.log(`✅ Started generating events with ${options.users} users`)
-        console.log(`Logging to: ${logFile}`)
+        console.log(`📁 Logging to: ${logFile}`)
+        console.log(`⚡ Kafka enabled: true`)
         console.log(
-          `Event intervals: ${configUpdates.baseEventInterval || 2000}ms - ${
+          `🔄 Event intervals: ${configUpdates.baseEventInterval || 2000}ms - ${
             configUpdates.maxEventInterval || 5000
           }ms`
         )
+        console.log('\n💡 Press Ctrl+C to stop')
       } else {
         console.log('⚠️  Generator is already running')
       }

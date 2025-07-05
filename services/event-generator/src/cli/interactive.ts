@@ -38,7 +38,7 @@ export function startInteractiveMode(generator: EventGenerator): void {
           console.log('❌ Generator not initialized')
           break
         }
-        const stopped = generator.stopGenerating()
+        const stopped = await generator.stopGenerating()
         console.log(
           stopped
             ? '✅ Event generation stopped'
@@ -142,6 +142,10 @@ export function startInteractiveMode(generator: EventGenerator): void {
         console.log(
           `   Intervals: ${config.baseEventInterval}ms - ${config.maxEventInterval}ms`
         )
+        console.log(
+          `   Kafka: ${config.kafka.enabled ? 'Enabled' : 'Disabled'}`
+        )
+        console.log(`   Kafka Topic: ${config.kafka.topic}`)
         console.log(`   Log File: ${config.logFile}`)
         break
 
@@ -164,7 +168,7 @@ export function startInteractiveMode(generator: EventGenerator): void {
         console.log('👋 Goodbye!')
         cleanup()
         if (generator) {
-          generator.stopGenerating()
+          await generator.cleanup()
         }
         process.exit(0)
 
@@ -183,7 +187,7 @@ export function startInteractiveMode(generator: EventGenerator): void {
     console.log('\n👋 Goodbye!')
     cleanup()
     if (generator) {
-      generator.stopGenerating()
+      generator.cleanup()
     }
     process.exit(0)
   })

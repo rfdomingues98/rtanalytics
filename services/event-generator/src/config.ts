@@ -6,6 +6,12 @@ export const defaultConfig: GeneratorConfig = {
   baseEventInterval: 2000,
   maxEventInterval: 5000,
   logFile: path.join(process.cwd(), 'events.log'),
+  kafka: {
+    enabled: true,
+    brokers: ['localhost:9092'],
+    topic: 'analytics-events',
+    clientId: 'event-generator',
+  },
 }
 
 // Global config instance
