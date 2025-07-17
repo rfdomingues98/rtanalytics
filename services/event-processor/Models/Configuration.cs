@@ -1,20 +1,25 @@
 namespace EventProcessor.Models;
 
-public class ProcessorConfiguration
-{
-  public KafkaConfiguration Kafka { get; set; } = new();
-  public RedisConfiguration Redis { get; set; } = new();
-  public SqlServerConfiguration SqlServer { get; set; } = new();
-  public ProcessingConfiguration Processing { get; set; } = new();
-}
-
 public class KafkaConfiguration
 {
-  public string BootstrapServers { get; set; } = "localhost:9092";
+  public bool Enabled { get; set; } = true;
+  public string[] Brokers { get; set; } = ["localhost:9092"];
   public string Topic { get; set; } = "analytics-events";
   public string GroupId { get; set; } = "event-processor";
   public string ClientId { get; set; } = "event-processor-consumer";
-  public bool AutoOffsetReset { get; set; } = true;
+  public int SessionTimeoutMs { get; set; } = 30000;
+  public int PollTimeoutMs { get; set; } = 100;
+  public string AutoOffsetReset { get; set; } = "earliest";
+}
+
+public class ProcessorConfiguration
+{
+  public KafkaConfiguration Kafka { get; set; } = new();
+  public int MaxRetries { get; set; } = 3;
+  public int RetryDelayMs { get; set; } = 1000;
+  public bool EnableBatching { get; set; } = true;
+  public int BatchSize { get; set; } = 100;
+  public int BatchTimeoutMs { get; set; } = 5000;
 }
 
 public class RedisConfiguration

@@ -16,18 +16,24 @@ public class EventData
 
 public enum EventType
 {
+  [JsonPropertyName("click")]
   Click,
+  [JsonPropertyName("page_view")]
   PageView,
+  [JsonPropertyName("purchase")]
   Purchase,
+  [JsonPropertyName("add_to_cart")]
   AddToCart,
+  [JsonPropertyName("checkout")]
   Checkout,
+  [JsonPropertyName("favorite")]
   Favorite,
+  [JsonPropertyName("add_review")]
   AddReview,
 }
 
-public enum TimeFrame
+public enum TimeWindow
 {
-  PerMinute,
   Hourly,
   Daily
 }
@@ -38,7 +44,7 @@ public class EventAggregation
   public long Count { get; set; }
   public double TotalValue { get; set; }
   public DateTime LastUpdated { get; set; }
-  public TimeFrame TimeWindow { get; set; }
+  public TimeWindow TimeWindow { get; set; }
   public DateTime WindowStart { get; set; }
 }
 
