@@ -1,7 +1,6 @@
 using EventProcessor.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
 
 namespace EventProcessor.Services;
 
@@ -9,15 +8,16 @@ public class EventProcessor : IEventProcessor
 {
   private readonly ILogger<EventProcessor> _logger;
   private readonly ProcessorConfiguration _config;
+  private readonly IRedisAggregationService _redisService;
 
-  // In-memory storage for demo purposes - in production, use Redis/Database
-  private readonly ConcurrentDictionary<string, UserMetrics> _userMetrics = new();
-  private readonly ConcurrentDictionary<string, EventAggregation> _aggregations = new();
-
-  public EventProcessor(ILogger<EventProcessor> logger, IOptions<ProcessorConfiguration> config)
+  public EventProcessor(
+    ILogger<EventProcessor> logger,
+    IOptions<ProcessorConfiguration> config,
+    IRedisAggregationService redisService)
   {
     _logger = logger;
     _config = config.Value;
+    _redisService = redisService;
   }
 
   public async Task ProcessEventAsync(EventData eventData, CancellationToken cancellationToken = default)
@@ -27,10 +27,16 @@ public class EventProcessor : IEventProcessor
 
     try
     {
-      // Update user metrics
+      // Check Redis connection
+      if (_config.Redis.Enabled && !await _redisService.IsConnectedAsync())
+      {
+        _logger.LogWarning("Redis is not connected, skipping aggregation storage");
+      }
+
+      // Update user metrics in Redis
       await UpdateUserMetricsAsync(eventData, cancellationToken);
 
-      // Update aggregations
+      // Update aggregations in Redis
       await UpdateAggregationsAsync(eventData, cancellationToken);
 
       // Log additional event details
@@ -56,127 +62,123 @@ public class EventProcessor : IEventProcessor
 
   public async Task<EventAggregation> GetAggregationAsync(EventType eventType, TimeWindow timeWindow, CancellationToken cancellationToken = default)
   {
-    await Task.CompletedTask; // Simulate async operation
-
-    var key = $"{eventType}_{timeWindow}_{GetWindowStart(timeWindow)}";
-
-    if (_aggregations.TryGetValue(key, out var aggregation))
+    try
     {
-      return aggregation;
+      var windowStart = GetWindowStart(timeWindow);
+
+      // Try to get from Redis first
+      if (_config.Redis.Enabled)
+      {
+        var redisAggregation = await _redisService.GetEventAggregationAsync(eventType, timeWindow, windowStart, cancellationToken);
+        if (redisAggregation != null)
+        {
+          _logger.LogDebug("Retrieved aggregation from Redis for {EventType} {TimeWindow}", eventType, timeWindow);
+          return redisAggregation;
+        }
+      }
+
+      _logger.LogDebug("Aggregation not found for {EventType} {TimeWindow}, returning default", eventType, timeWindow);
+
+      // Return default aggregation if not found
+      return new EventAggregation
+      {
+        EventType = eventType,
+        Count = 0,
+        TotalValue = 0,
+        LastUpdated = DateTime.UtcNow,
+        TimeWindow = timeWindow,
+        WindowStart = windowStart
+      };
     }
-
-    // Return default aggregation if not found
-    return new EventAggregation
+    catch (Exception ex)
     {
-      EventType = eventType,
-      Count = 0,
-      TotalValue = 0,
-      LastUpdated = DateTime.UtcNow,
-      TimeWindow = timeWindow,
-      WindowStart = GetWindowStart(timeWindow)
-    };
+      _logger.LogError(ex, "Error retrieving aggregation for {EventType} {TimeWindow}", eventType, timeWindow);
+      throw;
+    }
   }
 
   public async Task<UserMetrics> GetUserMetricsAsync(string userId, CancellationToken cancellationToken = default)
   {
-    await Task.CompletedTask; // Simulate async operation
-
-    if (_userMetrics.TryGetValue(userId, out var metrics))
+    try
     {
-      return metrics;
+      // Try to get from Redis first
+      if (_config.Redis.Enabled)
+      {
+        var redisMetrics = await _redisService.GetUserMetricsAsync(userId, cancellationToken);
+        if (redisMetrics != null)
+        {
+          _logger.LogDebug("Retrieved user metrics from Redis for user {UserId}", userId);
+          return redisMetrics;
+        }
+      }
+
+      _logger.LogDebug("User metrics not found for user {UserId}, returning default", userId);
+
+      // Return default metrics if user not found
+      return new UserMetrics
+      {
+        UserId = userId,
+        TotalEvents = 0,
+        PageViews = 0,
+        Purchases = 0,
+        TotalSpent = 0,
+        LastActivity = DateTime.UtcNow,
+        EventCounts = new Dictionary<EventType, long>()
+      };
     }
-
-    // Return default metrics if user not found
-    return new UserMetrics
+    catch (Exception ex)
     {
-      UserId = userId,
-      TotalEvents = 0,
-      PageViews = 0,
-      Purchases = 0,
-      TotalSpent = 0,
-      LastActivity = DateTime.UtcNow,
-      EventCounts = new Dictionary<EventType, long>()
-    };
+      _logger.LogError(ex, "Error retrieving user metrics for user {UserId}", userId);
+      throw;
+    }
   }
 
   private async Task UpdateUserMetricsAsync(EventData eventData, CancellationToken cancellationToken)
   {
-    await Task.CompletedTask; // Simulate async operation
-
-    var metrics = _userMetrics.GetOrAdd(eventData.UserId, _ => new UserMetrics
+    try
     {
-      UserId = eventData.UserId,
-      EventCounts = new Dictionary<EventType, long>()
-    });
-
-    // Update metrics
-    metrics.TotalEvents++;
-    metrics.LastActivity = DateTimeOffset.FromUnixTimeMilliseconds(eventData.Timestamp).DateTime;
-
-    // Update event type counts
-    metrics.EventCounts[eventData.EventType] = metrics.EventCounts.GetValueOrDefault(eventData.EventType, 0) + 1;
-
-    // Update specific metrics based on event type
-    switch (eventData.EventType)
-    {
-      case EventType.PageView:
-        metrics.PageViews++;
-        break;
-      case EventType.Purchase:
-        metrics.Purchases++;
-        if (eventData.Metadata.TryGetValue("amount", out var amount) &&
-            double.TryParse(amount?.ToString(), out var purchaseAmount))
-        {
-          metrics.TotalSpent += purchaseAmount;
-        }
-        break;
+      if (_config.Redis.Enabled)
+      {
+        // Use Redis for atomic increment operations
+        await _redisService.IncrementUserMetricAsync(eventData.UserId, eventData, cancellationToken);
+        _logger.LogDebug("Updated user metrics in Redis for user {UserId}", eventData.UserId);
+      }
+      else
+      {
+        _logger.LogWarning("Redis is disabled, user metrics will not be persisted");
+      }
     }
-
-    _logger.LogDebug("Updated metrics for user {UserId}: {TotalEvents} total events",
-        eventData.UserId, metrics.TotalEvents);
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to update user metrics for user {UserId}", eventData.UserId);
+      throw;
+    }
   }
 
   private async Task UpdateAggregationsAsync(EventData eventData, CancellationToken cancellationToken)
   {
-    await Task.CompletedTask; // Simulate async operation
-
-    // Update hourly aggregation
-    await UpdateAggregationForWindow(eventData, TimeWindow.Hourly, cancellationToken);
-
-    // Update daily aggregation
-    await UpdateAggregationForWindow(eventData, TimeWindow.Daily, cancellationToken);
-  }
-
-  private async Task UpdateAggregationForWindow(EventData eventData, TimeWindow timeWindow, CancellationToken cancellationToken)
-  {
-    await Task.CompletedTask; // Simulate async operation
-
-    var windowStart = GetWindowStart(timeWindow);
-    var key = $"{eventData.EventType}_{timeWindow}_{windowStart:yyyy-MM-dd-HH}";
-
-    var aggregation = _aggregations.GetOrAdd(key, _ => new EventAggregation
+    try
     {
-      EventType = eventData.EventType,
-      Count = 0,
-      TotalValue = 0,
-      TimeWindow = timeWindow,
-      WindowStart = windowStart,
-      LastUpdated = DateTime.UtcNow
-    });
+      if (_config.Redis.Enabled)
+      {
+        // Update hourly aggregation
+        await _redisService.IncrementEventAggregationAsync(eventData, TimeWindow.Hourly, cancellationToken);
 
-    // Update aggregation
-    aggregation.Count++;
-    aggregation.LastUpdated = DateTime.UtcNow;
+        // Update daily aggregation
+        await _redisService.IncrementEventAggregationAsync(eventData, TimeWindow.Daily, cancellationToken);
 
-    // Add value if present in metadata
-    if (eventData.Metadata.TryGetValue("amount", out var amount) &&
-        double.TryParse(amount?.ToString(), out var value))
-    {
-      aggregation.TotalValue += value;
+        _logger.LogDebug("Updated aggregations in Redis for event {EventType}", eventData.EventType);
+      }
+      else
+      {
+        _logger.LogWarning("Redis is disabled, event aggregations will not be persisted");
+      }
     }
-
-    _logger.LogDebug("Updated {TimeWindow} aggregation for {EventType}: {Count} events",
-        timeWindow, eventData.EventType, aggregation.Count);
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to update aggregations for event {EventType}", eventData.EventType);
+      throw;
+    }
   }
 
   private static DateTime GetWindowStart(TimeWindow timeWindow)
