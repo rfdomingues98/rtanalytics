@@ -1,12 +1,18 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace EventProcessor.Models;
 
 public class KafkaConfiguration
 {
   public bool Enabled { get; set; } = true;
-  public string[] Brokers { get; set; } = ["localhost:9092"];
-  public string Topic { get; set; } = "analytics-events";
-  public string GroupId { get; set; } = "event-processor";
-  public string ClientId { get; set; } = "event-processor-consumer";
+  [Required]
+  public List<string> Brokers { get; set; } = [];
+  [Required]
+  public string Topic { get; set; } = string.Empty;
+  [Required]
+  public string GroupId { get; set; } = string.Empty;
+  [Required]
+  public string ClientId { get; set; } = string.Empty;
   public int SessionTimeoutMs { get; set; } = 30000;
   public int PollTimeoutMs { get; set; } = 100;
   public string AutoOffsetReset { get; set; } = "earliest";
@@ -15,6 +21,7 @@ public class KafkaConfiguration
 public class ProcessorConfiguration
 {
   public KafkaConfiguration Kafka { get; set; } = new();
+  public RedisConfiguration Redis { get; set; } = new();
   public int MaxRetries { get; set; } = 3;
   public int RetryDelayMs { get; set; } = 1000;
   public bool EnableBatching { get; set; } = true;
@@ -24,10 +31,12 @@ public class ProcessorConfiguration
 
 public class RedisConfiguration
 {
+  public bool Enabled { get; set; } = true;
+  [Required]
   public string ConnectionString { get; set; } = "localhost:6379";
-  public string KeyPrefix { get; set; } = "analytics:";
   public int Database { get; set; } = 0;
-  public TimeSpan DefaultExpiry { get; set; } = TimeSpan.FromHours(24);
+  public string KeyPrefix { get; set; } = "analytics:";
+  public int ExpirationMinutes { get; set; } = 1440; // 24 hours
 }
 
 public class SqlServerConfiguration
