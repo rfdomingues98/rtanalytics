@@ -104,6 +104,7 @@ public class Program
             services.AddSingleton<IRedisAggregationService, RedisAggregationService>();
             services.AddSingleton<IEventProcessor, Services.EventProcessor>();
             services.AddHostedService<KafkaConsumerService>();
+            services.AddHostedService<WebSocketService>();
 
             // Configure logging
             services.AddLogging(builder =>
