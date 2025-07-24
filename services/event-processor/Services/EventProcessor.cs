@@ -169,9 +169,19 @@ public class EventProcessor : IEventProcessor
       {
         // Update hourly aggregation
         await _redisService.IncrementEventAggregationAsync(eventData, TimeWindow.Hourly, cancellationToken);
+        var hourlyAgg = await _redisService.GetEventAggregationAsync(eventData.EventType, TimeWindow.Hourly, GetWindowStart(TimeWindow.Hourly), cancellationToken);
+        if (hourlyAgg != null)
+        {
+          await _broadcastService.BroadcastAggregationAsync($"{eventData.EventType}_hourly", hourlyAgg);
+        }
 
         // Update daily aggregation
         await _redisService.IncrementEventAggregationAsync(eventData, TimeWindow.Daily, cancellationToken);
+        var dailyAgg = await _redisService.GetEventAggregationAsync(eventData.EventType, TimeWindow.Daily, GetWindowStart(TimeWindow.Daily), cancellationToken);
+        if (dailyAgg != null)
+        {
+          await _broadcastService.BroadcastAggregationAsync($"{eventData.EventType}_daily", dailyAgg);
+        }
 
         _logger.LogDebug("Updated aggregations in Redis for event {EventType}", eventData.EventType);
       }
