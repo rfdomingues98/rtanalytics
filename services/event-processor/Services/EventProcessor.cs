@@ -9,15 +9,18 @@ public class EventProcessor : IEventProcessor
   private readonly ILogger<EventProcessor> _logger;
   private readonly ProcessorConfiguration _config;
   private readonly IRedisAggregationService _redisService;
+  private readonly IAnalyticsBroadcastService _broadcastService;
 
   public EventProcessor(
     ILogger<EventProcessor> logger,
     IOptions<ProcessorConfiguration> config,
-    IRedisAggregationService redisService)
+    IRedisAggregationService redisService,
+    IAnalyticsBroadcastService broadcastService)
   {
     _logger = logger;
     _config = config.Value;
     _redisService = redisService;
+    _broadcastService = broadcastService;
   }
 
   public async Task ProcessEventAsync(EventData eventData, CancellationToken cancellationToken = default)
@@ -48,6 +51,9 @@ public class EventProcessor : IEventProcessor
 
       // Simulate processing delay (remove in production)
       await Task.Delay(50, cancellationToken);
+
+      // Broadcast the event to WebSocket clients
+      await _broadcastService.BroadcastEventAsync(eventData);
 
       _logger.LogInformation("Successfully processed event {EventType} for user {UserId}",
           eventData.EventType, eventData.UserId);
