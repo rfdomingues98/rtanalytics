@@ -22,6 +22,7 @@ public class ProcessorConfiguration
 {
   public KafkaConfiguration Kafka { get; set; } = new();
   public RedisConfiguration Redis { get; set; } = new();
+  public WebSocketConfiguration WebSocket { get; set; } = new();
   public int MaxRetries { get; set; } = 3;
   public int RetryDelayMs { get; set; } = 1000;
   public bool EnableBatching { get; set; } = true;
@@ -37,6 +38,16 @@ public class RedisConfiguration
   public int Database { get; set; } = 0;
   public string KeyPrefix { get; set; } = "analytics:";
   public int ExpirationMinutes { get; set; } = 1440; // 24 hours
+}
+
+public class WebSocketConfiguration
+{
+  public bool Enabled { get; set; } = true;
+  public int Port { get; set; } = 5001;
+  public string Url { get; set; } = "http://localhost:5001";
+  public string HubPath { get; set; } = "/analyticsHub";
+  public bool EnableCors { get; set; } = true;
+  public List<string> AllowedOrigins { get; set; } = ["*"];
 }
 
 public class SqlServerConfiguration

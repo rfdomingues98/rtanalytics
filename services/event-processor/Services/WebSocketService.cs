@@ -25,38 +25,54 @@ public class WebSocketService : BackgroundService
   {
     try
     {
-      _logger.LogInformation("Starting WebSocket service on port 5001");
+      if (!_config.WebSocket.Enabled)
+      {
+        _logger.LogInformation("WebSocket service is disabled in configuration");
+        return;
+      }
+
+      _logger.LogInformation("Starting WebSocket service on {Url}", _config.WebSocket.Url);
 
       _webHost = Host.CreateDefaultBuilder()
           .ConfigureWebHostDefaults(webBuilder =>
           {
-            webBuilder.UseUrls("http://localhost:5001");
+            webBuilder.UseUrls(_config.WebSocket.Url);
             webBuilder.Configure(app =>
-                  {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
-                      {
-                    endpoints.MapHub<AnalyticsHub>("/analyticsHub");
-                  });
+            {
+              app.UseRouting();
+
+              if (_config.WebSocket.EnableCors)
+              {
+                app.UseCors();
+              }
+
+              app.UseEndpoints(endpoints =>
+              {
+                endpoints.MapHub<AnalyticsHub>(_config.WebSocket.HubPath);
               });
+            });
           })
           .ConfigureServices(services =>
           {
             services.AddSignalR();
-            services.AddCors(options =>
-                  {
+            if (_config.WebSocket.EnableCors)
+            {
+              services.AddCors(options =>
+              {
                 options.AddDefaultPolicy(builder =>
-                      {
-                    builder.AllowAnyOrigin()
-                                 .AllowAnyMethod()
-                                 .AllowAnyHeader();
-                  });
+                {
+                  builder.WithOrigins(_config.WebSocket.AllowedOrigins.ToArray())
+                         .AllowAnyMethod()
+                         .AllowAnyHeader()
+                         .AllowCredentials();
+                });
               });
+            }
           })
           .Build();
 
       await _webHost.StartAsync(stoppingToken);
-      _logger.LogInformation("WebSocket service started successfully");
+      _logger.LogInformation("WebSocket service started successfully on {Url}", _config.WebSocket.Url);
 
       // Keep the service running
       await _webHost.WaitForShutdownAsync(stoppingToken);

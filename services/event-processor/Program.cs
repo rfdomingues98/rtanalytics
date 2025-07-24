@@ -103,6 +103,7 @@ public class Program
             // Register services
             services.AddSingleton<IRedisAggregationService, RedisAggregationService>();
             services.AddSingleton<IEventProcessor, Services.EventProcessor>();
+            services.AddSingleton<IAnalyticsBroadcastService, AnalyticsBroadcastService>();
             services.AddHostedService<KafkaConsumerService>();
             services.AddHostedService<WebSocketService>();
 
